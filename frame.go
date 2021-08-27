@@ -52,22 +52,33 @@ func (w *FrameWriter) writeBlock(b []byte, isLast bool) (err error) {
 // Sum of all block sizes is not equal to TotalSize.
 var ErrSizeMismatch = errors.New("size mismatch")
 
+// Frame Size Exceeds MaxSize.
+var ErrFrameTooLarge = errors.New("frame too large")
+
 // Read one frame from the reader and write it to the buffer.
-func (r *FrameReader) ReadToBuffer(w io.Writer) (err error) {
+func (r *FrameReader) readToBuffer(w io.Writer, max int) (err error) {
 	var sizeBytes [8]byte
+	var payloadSize int
 	_, err = io.ReadFull(r.R, sizeBytes[:])
 	if err != nil {
 		return err
 	}
 	size := int(binary.BigEndian.Uint64(sizeBytes[:]))
+	if size > max && max != -1 {
+		return ErrFrameTooLarge
+	}
 	for size > 0 {
 		n, isLast, err := r.readBlock(w)
 		if err != nil {
 			return err
 		}
+		payloadSize += n
 		size -= n
 		if isLast {
 			break
+		}
+		if payloadSize > max && max != -1 {
+			return ErrFrameTooLarge
 		}
 	}
 	if size != 0 {
@@ -76,12 +87,41 @@ func (r *FrameReader) ReadToBuffer(w io.Writer) (err error) {
 	return nil
 }
 
+// Read one frame from the reader and write it to the buffer.
+func (r *FrameReader) ReadToBuffer(w io.Writer) (err error) {
+	return r.readToBuffer(w, -1)
+}
+
+// Read one frame from the reader and write it to the writer.
+//
+// If the frame is larger than maxSize, ErrFrameTooLarge is returned.
+func (r *FrameReader) ReadToBufferMax(w io.Writer, maxSize int) (err error) {
+	return r.readToBuffer(w, maxSize)
+}
+
 // Read one frame from the reader and call the callback function.
+//
 // Returned byte slice is not valid after the callback function returns. (due to reusing the buffer)
 func (r *FrameReader) ReadCallback(cb func([]byte)) (err error) {
 	buffer := bytebufferpool.Get()
 	defer bytebufferpool.Put(buffer)
-	err = r.ReadToBuffer(buffer)
+	err = r.readToBuffer(buffer, -1)
+	if err != nil {
+		return err
+	}
+	cb(buffer.B)
+	return nil
+}
+
+// Read one frame from the reader and call the callback function.
+//
+// Returned byte slice is not valid after the callback function returns. (due to reusing the buffer)
+//
+// If the frame is larger than maxSize, ErrFrameTooLarge is returned.
+func (r *FrameReader) ReadCallbackMax(cb func([]byte), maxSize int) (err error) {
+	buffer := bytebufferpool.Get()
+	defer bytebufferpool.Put(buffer)
+	err = r.readToBuffer(buffer, maxSize)
 	if err != nil {
 		return err
 	}
@@ -92,7 +132,19 @@ func (r *FrameReader) ReadCallback(cb func([]byte)) (err error) {
 // Read one frame from the reader and return it as a byte array. (allocates memory)
 func (r *FrameReader) Read() (data []byte, err error) {
 	var buf bytes.Buffer
-	err = r.ReadToBuffer(&buf)
+	err = r.readToBuffer(&buf, -1)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Read one frame from the reader and return it as a byte array. (allocates memory)
+//
+// If the frame is larger than maxSize, ErrFrameTooLarge is returned.
+func (r *FrameReader) ReadMax(maxSize int) (data []byte, err error) {
+	var buf bytes.Buffer
+	err = r.readToBuffer(&buf, maxSize)
 	if err != nil {
 		return nil, err
 	}
