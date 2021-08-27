@@ -1,5 +1,7 @@
 # Frame IO
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/lemon-mint/frameio.svg)](https://pkg.go.dev/github.com/lemon-mint/frameio)
+
 DoS Safe Frame based IO.
 
 Convert Stream to Frame!
