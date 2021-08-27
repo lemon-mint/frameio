@@ -9,6 +9,7 @@ Convert Stream to Frame!
 - [X] Payload Size Verification (Safe from attacks that falsify payload size)
 - [X] Read CallBack (Reduce Memory Allocation)
 - [X] Read To Buffer (Reduce Memory Allocation)
+- [X] Payload maximum size limit
 
 ## Protocol
 
