@@ -1,0 +1,8 @@
+main
+
+*.exe
+*.out
+*.log
+*.debug
+*.gz
+*.aux

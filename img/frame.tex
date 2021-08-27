@@ -1,0 +1,18 @@
+\documentclass[border=10pt, png]{standalone}
+\usepackage{bytefield}
+
+\begin{document}
+
+\begin{bytefield}[bitwidth=1.1em]{64}
+        \bitheader{0-63} \\
+        \begin{rightwordgroup}{Header}
+        \bitbox{64}{Total Size (network order)}
+        \end{rightwordgroup} \\
+			\begin{rightwordgroup}{Block}
+			\bitbox{1}{N} &&
+        \bitbox{7}{Payload Size} && 
+        \bitbox{56}{Payload $\cdots$}
+        \end{rightwordgroup}
+    \end{bytefield}
+
+\end{document}
